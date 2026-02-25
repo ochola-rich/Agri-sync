@@ -36,3 +36,11 @@ run:
 clean:
 	@echo "🧹 Removing SQLite DB..."
 	rm -f $(DB_PATH)
+
+# -----------------------
+# Setup
+# -----------------------
+setup:
+	@echo "🔧 Setting up project..."
+	go mod tidy
+	mkdir -p ./data

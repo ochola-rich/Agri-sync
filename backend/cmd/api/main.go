@@ -15,7 +15,7 @@ func main() {
 	// -------------------------
 	// 1️⃣ Connect to SQLite
 	// -------------------------
-	migrationsDir := "migrations"      // folder with your .up.sql / .down.sql files
+	migrationsDir := "./internal/database/migrations"      // folder with your .up.sql / .down.sql files
 
 	db, err := database.ConnectSQLite(cfg.DBPath)
 	if err != nil {
