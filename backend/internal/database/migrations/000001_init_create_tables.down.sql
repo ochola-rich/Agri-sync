@@ -1,0 +1,4 @@
+
+DROP TABLE IF EXISTS collections;
+DROP TABLE IF EXISTS collectors;
+DROP TABLE IF EXISTS farmers;
