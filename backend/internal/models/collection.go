@@ -20,9 +20,10 @@ type Collection struct {
 	WeightKg    float64   `json:"weight_kg" db:"weight_kg"`
 	PricePerKg  float64   `json:"price_per_kg" db:"price_per_kg"`
 
-	// Verified        bool   `json:"verified" db:"verified"` // digital handshake complete
+	Verified        bool   `json:"verified" db:"verified"` // digital handshake complete
 	// FarmerSignature string `json:"farmer_signature" db:"farmer_signature"`
 	// CollectorSignature string `json:"collector_signature" db:"collector_signature"`
+	Status          TransactionStatus `json:"status" db:"status"`
 
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`

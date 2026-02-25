@@ -37,7 +37,6 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Store in context for handlers
 		c.Set("userId", claims.UserID)
 		c.Set("role", claims.Role)
 
