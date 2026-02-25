@@ -7,8 +7,7 @@ import (
 )
 
 var (
-	// WARNING: Hardcoded for LOCAL DEVELOPMENT ONLY
-	// In production: load from env or secret manager
+	// Hardcoded for LOCAL DEV ONLY - never commit
 	jwtSecret = []byte("super-secret-key-change-this-immediately-2026")
 )
 

@@ -3,8 +3,9 @@ package repository
 import (
 	"database/sql"
 	"time"
-
+	"errors"
 	"agri-sync-backend/internal/models"
+	"fmt"
 )
 
 type FarmerRepository struct {
@@ -76,4 +77,43 @@ func (r *FarmerRepository) Update(f *models.Farmer) error {
 func (r *FarmerRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM farmers WHERE id = ?`, id)
 	return err
+}
+
+
+func (r *FarmerRepository) GetByPhone(phone string) (*models.Farmer, error) {
+    row := r.db.QueryRow(`
+        SELECT id, name, phone, password_hash, version, created_at, updated_at
+        FROM farmers WHERE phone = $1`, phone)
+
+    var f models.Farmer
+    var createdAtStr, updatedAtStr string   // ← change to string
+
+    err := row.Scan(
+        &f.ID,
+        &f.Name,
+        &f.Phone,
+        &f.PasswordHash,
+        &f.Version,
+        &createdAtStr,   // ← scan as string
+        &updatedAtStr,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, errors.New("farmer not found")
+        }
+        return nil, err
+    }
+
+    // Manually parse the strings to time.Time
+    f.CreatedAt, err = time.Parse(time.RFC3339, createdAtStr)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse created_at: %w", err)
+    }
+
+    f.UpdatedAt, err = time.Parse(time.RFC3339, updatedAtStr)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse updated_at: %w", err)
+    }
+
+    return &f, nil
 }

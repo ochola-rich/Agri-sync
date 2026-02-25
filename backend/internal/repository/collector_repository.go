@@ -3,8 +3,9 @@ package repository
 import (
 	"database/sql"
 	"time"
-
+	"errors"
 	"agri-sync-backend/internal/models"
+	"fmt"
 )
 
 type CollectorRepository struct {
@@ -66,4 +67,43 @@ func (r *CollectorRepository) Update(c *models.Collector) error {
 func (r *CollectorRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM collectors WHERE id = ?`, id)
 	return err
+}
+
+
+func (r *CollectorRepository) GetByPhone(phone string) (*models.Collector, error) {
+    row := r.db.QueryRow(`
+        SELECT id, name, phone, password_hash, version, created_at, updated_at
+        FROM collectors WHERE phone = $1`, phone)
+
+    var c models.Collector
+    var createdAtStr, updatedAtStr string
+
+    err := row.Scan(
+        &c.ID,
+        &c.Name,
+        &c.Phone,
+        &c.PasswordHash,
+        &c.Version,
+        &createdAtStr,
+        &updatedAtStr,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, errors.New("collector not found")
+        }
+        return nil, err
+    }
+
+    // Parse timestamps manually
+    c.CreatedAt, err = time.Parse(time.RFC3339, createdAtStr)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse created_at: %w", err)
+    }
+
+    c.UpdatedAt, err = time.Parse(time.RFC3339, updatedAtStr)
+    if err != nil {
+        return nil, fmt.Errorf("failed to parse updated_at: %w", err)
+    }
+
+    return &c, nil
 }
