@@ -1,5 +1,5 @@
 import { getAllCollections } from './db';
-import { API_BASE, authHeader, getToken } from './auth';
+import { API_BASE, authHeader, getToken, getStoredRole } from './auth';
 
 const COLLECTIONS_ENDPOINT = `${API_BASE}/collections`;
 
@@ -31,6 +31,15 @@ async function postWithRetry(item: any, maxAttempts = 5) {
       });
       if (res.ok) return { ok: true, res };
       if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        try {
+          const ct = res.headers.get('content-type') || '';
+          const msg = ct.includes('application/json')
+            ? JSON.stringify(await res.json().catch(() => ({})))
+            : await res.text();
+          console.warn('[sync] permanent client error', res.status, 'posting collection', item?.id ?? '(unknown)', msg);
+        } catch (_) {
+          console.warn('[sync] permanent client error', res.status, 'posting collection', item?.id ?? '(unknown)');
+        }
         return { ok: false, res, permanent: true };
       }
       // transient (5xx or 429) -> retry
@@ -53,6 +62,12 @@ export function startSyncProcess(intervalMs = 30000) {
     const token = getToken();
     if (!token) {
       console.debug('[sync] no auth token, skipping sync');
+      return;
+    }
+
+    const role = getStoredRole();
+    if (role !== 'collector') {
+      console.debug('[sync] role is', role, '- skipping collections sync');
       return;
     }
 
