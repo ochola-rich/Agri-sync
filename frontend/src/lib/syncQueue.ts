@@ -1,5 +1,6 @@
 import { db } from './db';
 import type { OutgoingOp } from './db';
+import { authHeader } from '../auth';
 
 const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 1000;
@@ -10,10 +11,7 @@ function delay(ms: number) {
 
 async function sendOp(op: OutgoingOp) {
   try {
-    const headers: any = { 'Content-Type': 'application/json' };
-    // attach Authorization from local storage if present
-    const token = localStorage.getItem('token');
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const headers: any = { 'Content-Type': 'application/json', ...authHeader() };
 
     const res = await fetch(op.url, {
       method: op.method,

@@ -107,23 +107,48 @@ func ListCollections(c *gin.Context, repo *repository.CollectionRepository) {
 }
 
 type UpdateStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=pending verified paid"`
+	Status  string `json:"status" binding:"required,oneof=pending verified paid"`
+	Version int    `json:"version" binding:"required"`
 }
 
 func UpdateCollectionStatus(c *gin.Context, repo *repository.CollectionRepository) {
 	id := c.Param("id")
-	var payload struct {
-		Status  string `json:"status"`
-		Version int    `json:"version"`
+	roleVal, roleExists := c.Get("role")
+	userIDVal, userExists := c.Get("userId")
+	if !roleExists || !userExists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		return
 	}
-	if err := c.BindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+	role := roleVal.(string)
+	userID := userIDVal.(string)
+
+	if role != "collector" && role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only collectors and admins can update collection status"})
+		return
+	}
+
+	// If collector, ensure they own the collection they are updating
+	if role == "collector" {
+		current, err := repo.GetByID(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "collection not found"})
+			return
+		}
+		if current.CollectorID != userID {
+			c.JSON(http.StatusForbidden, gin.H{"error": "not authorized to update this collection"})
+			return
+		}
+	}
+
+	var payload UpdateStatusRequest
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	col := &models.Collection{
 		ID:      id,
-		Status:  payload.Status,
+		Status:  models.TransactionStatus(payload.Status),
 		Version: payload.Version,
 	}
 

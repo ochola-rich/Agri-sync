@@ -1,15 +1,23 @@
 package auth
 
 import (
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
-	// Hardcoded for LOCAL DEV ONLY - never commit
-	jwtSecret = []byte("super-secret-key-change-this-immediately-2026")
+	// Default is for LOCAL DEV ONLY; override via AGRISYNC_JWT_SECRET in real deployments.
+	jwtSecret = []byte(getJWTSecret())
 )
+
+func getJWTSecret() string {
+	if v := os.Getenv("AGRISYNC_JWT_SECRET"); v != "" {
+		return v
+	}
+	return "super-secret-key-change-this-immediately-2026"
+}
 
 type Claims struct {
 	UserID string `json:"userId"`

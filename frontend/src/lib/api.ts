@@ -1,7 +1,6 @@
 import { enqueueOp } from './syncQueue';
 import { v4 as uuidv4 } from 'uuid';
-
-const API_BASE = 'http://localhost:8080';
+import { API_BASE, authHeader } from '../auth';
 
 export type CreateCollectionPayload = {
   farmerId: string;
@@ -23,12 +22,11 @@ export async function createCollection(payload: CreateCollectionPayload) {
   // optimistic local behavior: try network first, otherwise enqueue
   if (navigator.onLine) {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(op.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...authHeader(),
         },
         body: JSON.stringify(op.body),
       });
@@ -58,12 +56,11 @@ export async function updateCollectionStatus(id: string, status: string, version
 
   if (navigator.onLine) {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(op.url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...authHeader(),
         },
         body: JSON.stringify(op.body),
       });
