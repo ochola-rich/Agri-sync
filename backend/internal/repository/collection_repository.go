@@ -158,9 +158,9 @@ func (r *CollectionRepository) UpdateWithVersion(c *models.Collection) error {
 
 	res, err := tx.Exec(`
       UPDATE collections
-      SET status = ?, metadata = ?, version = version + 1, updated_at = ?
+      SET status = ?, version = version + 1, updated_at = ?
       WHERE id = ? AND version = ?
-    `, c.Status, c.Metadata, time.Now(), c.ID, c.Version)
+    `, c.Status, time.Now().UTC(), c.ID, c.Version)
 	if err != nil {
 		return err
 	}

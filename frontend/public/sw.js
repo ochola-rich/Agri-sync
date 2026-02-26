@@ -1,6 +1,6 @@
 // Simple offline-first service worker for static assets
 const CACHE_NAME = 'agrisync-v1';
-const ASSETS = ['/','/index.html','/vite.svg','/src/main.tsx'];
+const ASSETS = ['/', '/index.html', '/vite.svg', '/manifest.json'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -18,7 +18,12 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   // network first for API calls, cache-first for assets (simple heuristic)
   const url = new URL(e.request.url);
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/auth') || url.includes('/farmers') || url.includes('/collections')) {
+  if (
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/auth') ||
+    url.pathname.includes('/farmers') ||
+    url.pathname.includes('/collections')
+  ) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }

@@ -48,6 +48,19 @@ func GetFarmerProfile(c *gin.Context, repo *repository.FarmerRepository) {
 func GetCollectorProfile(c *gin.Context, repo *repository.CollectorRepository) {
 	id := c.Param("id")
 
+	// Check if authenticated user is requesting their own profile
+	userIDVal, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
+	userID := userIDVal.(string)
+
+	if id != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You can only view your own profile"})
+		return
+	}
+
 	collector, err := repo.GetByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Collector not found or error: " + err.Error()})

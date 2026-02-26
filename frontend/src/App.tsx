@@ -6,7 +6,18 @@ import { initDB, addCollection, getAllCollections, estimateStorage } from './db'
 import { startSyncProcess } from './sync';
 import LoginForm from './components/Auth/LoginForm';
 import SignupForm from './components/Auth/SignupForm';
-import { fetchProfile, getToken, getStoredRole, setStoredRole, setToken, setUserId } from './auth';
+import {
+  fetchProfile,
+  getToken,
+  getStoredRole,
+  getUserId,
+  setStoredRole,
+  setToken,
+  setUserId,
+  clearToken as clearStoredToken,
+  clearStoredRole as clearStoredRoleKey,
+  clearUserId as clearStoredUserId,
+} from './auth';
 
 // Component Imports
 import CollectorHeader from './components/Collector/CollectorHeader';
@@ -293,6 +304,12 @@ export default function App() {
     e.preventDefault();
     if (!currentFarmer) return;
 
+    const collectorId = getUserId();
+    if (!collectorId) {
+      console.warn('[handshake] missing collector userId; aborting receipt generation');
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const cropType = formData.get('crop') as string;
     const weightKg = parseFloat(formData.get('weight') as string);
@@ -304,9 +321,7 @@ export default function App() {
       id: uuidv4(),
       farmerId: currentFarmer.id,
       farmerName: currentFarmer.name,
-
-      
-      collectorId: 'C-1234',
+      collectorId,
       cropType,
       weightKg,
       pricePerKg,
@@ -470,48 +485,16 @@ export default function App() {
     );
   }
 
-  function clearToken(): void {
+  const handleSignOut = () => {
     try {
-      // Remove common localStorage keys used by the app
-      localStorage.removeItem('agrisync_token');
-      localStorage.removeItem('token');
-
-      // Also clear from sessionStorage if anything was stored there
-      sessionStorage.removeItem('agrisync_token');
-      sessionStorage.removeItem('token');
-    } catch {
-      // ignore storage errors (e.g. when storage is unavailable)
-    }
-
-    try {
-      // Attempt to clear cookies if auth was stored there
-      document.cookie = 'agrisync_token=; Max-Age=0; path=/;';
-      document.cookie = 'token=; Max-Age=0; path=/;';
-    } catch {
-      // ignore cookie errors
-    }
-  }
-
-  function clearStoredRole(): void {
-    try {
-      // Remove common role keys the app might use
-      localStorage.removeItem('agrisync_role');
-      localStorage.removeItem('agrisync_selected_role');
-      localStorage.removeItem('role');
-      sessionStorage.removeItem('agrisync_role');
-      sessionStorage.removeItem('role');
+      clearStoredToken();
+      clearStoredRoleKey();
+      clearStoredUserId();
     } catch {
       // ignore storage errors
     }
-
-    try {
-      // If the imported setStoredRole is available, attempt to clear via it (best-effort).
-      // cast to any to avoid strict typing issues if it doesn't accept null.
-      (setStoredRole as any)?.(null);
-    } catch {
-      // ignore errors
-    }
-  }
+    setRole(null);
+  };
   // Role Views
   return (
     <div className="max-w-md mx-auto bg-slate-50 min-h-screen flex flex-col relative shadow-2xl border-x border-slate-200">
@@ -519,7 +502,7 @@ export default function App() {
       <div className={`px-4 py-1 text-[10px] font-bold text-white flex justify-between ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}>
         <span>{isOnline ? 'ONLINE' : 'OFFLINE MODE'}</span>
         <div>
-          <button onClick={() => { clearToken(); clearStoredRole(); setRole(null); }} className="underline opacity-70 mr-3">Sign out</button>
+          <button onClick={handleSignOut} className="underline opacity-70 mr-3">Sign out</button>
           <button onClick={() => setRole(null)} className="underline opacity-70">Switch Role</button>
         </div>
       </div>
