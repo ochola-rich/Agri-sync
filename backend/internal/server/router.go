@@ -3,6 +3,7 @@ package server
 import (
 	"database/sql"
 	"net/http"
+	"time"
 	"agri-sync-backend/internal/auth"
 	"agri-sync-backend/internal/handler"
 	"agri-sync-backend/internal/repository"
@@ -13,7 +14,24 @@ import (
 
 func SetupRouter(db *sql.DB) *gin.Engine {
 	r := gin.Default()
-	r.Use(cors.Default())
+
+	// Custom CORS so browser preflight allows Authorization header
+	corsConfig := cors.Config{
+		// allow only local dev origin when sending credentials
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
+	r.Use(cors.New(corsConfig))
+
+	// ensure preflight gets a short-circuit response (cors middleware usually handles this,
+	// but adding an explicit handler can help if some middleware runs before it)
+	r.OPTIONS("/*path", func(c *gin.Context) {
+		c.AbortWithStatus(http.StatusNoContent)
+	})
 
 	// Repositories
 	farmerRepo := repository.NewFarmerRepository(db)
