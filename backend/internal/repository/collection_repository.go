@@ -8,6 +8,8 @@ import (
 	"agri-sync-backend/internal/models"
 )
 
+var ErrConflict = errors.New("version conflict")
+
 type CollectionRepository struct {
 	db *sql.DB
 }
@@ -58,6 +60,7 @@ func (r *CollectionRepository) GetByID(id string) (*models.Collection, error) {
 }
 
 // ── Your original UPDATE ──
+// UPDATE (optimistic concurrency)
 func (r *CollectionRepository) Update(c *models.Collection) error {
 	c.Version++
 	c.UpdatedAt = time.Now().UTC()
@@ -142,4 +145,31 @@ func (r *CollectionRepository) UpdateStatus(id string, status models.Transaction
 		status, id,
 	)
 	return err
+}
+
+// UpdateWithVersion updates collection only if the provided version matches current.
+// It increments the version on success. Returns ErrConflict if mismatch.
+func (r *CollectionRepository) UpdateWithVersion(c *models.Collection) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(`
+      UPDATE collections
+      SET status = ?, metadata = ?, version = version + 1, updated_at = ?
+      WHERE id = ? AND version = ?
+    `, c.Status, c.Metadata, time.Now(), c.ID, c.Version)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return ErrConflict
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }

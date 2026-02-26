@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	// "time"
 	"agri-sync-backend/internal/models"
 	"agri-sync-backend/internal/repository"
 
@@ -112,24 +111,36 @@ type UpdateStatusRequest struct {
 }
 
 func UpdateCollectionStatus(c *gin.Context, repo *repository.CollectionRepository) {
-	roleVal, _ := c.Get("role")
-	if roleVal != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can update collection status"})
-		return
-	}
-
 	id := c.Param("id")
-	var req UpdateStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var payload struct {
+		Status  string `json:"status"`
+		Version int    `json:"version"`
+	}
+	if err := c.BindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 		return
 	}
 
-	err := repo.UpdateStatus(id, models.TransactionStatus(req.Status))
+	col := &models.Collection{
+		ID:      id,
+		Status:  payload.Status,
+		Version: payload.Version,
+	}
+
+	err := repo.UpdateWithVersion(col)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update status: " + err.Error()})
+		if err == repository.ErrConflict {
+			// fetch current record to return for client merge UI
+			current, fetchErr := repo.GetByID(id)
+			if fetchErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "conflict and failed to fetch current"})
+				return
+			}
+			c.JSON(http.StatusConflict, gin.H{"error": "version conflict", "current": current})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Status updated", "id": id})
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
